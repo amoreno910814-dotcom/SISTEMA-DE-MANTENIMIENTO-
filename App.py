@@ -336,11 +336,10 @@ TECNICOS_LISTA = [
     "GARCIA PRATS JUAN", "LUNA RODOLFO", "MEDINA MARIO", "MENDOZA CARLOS", "MENDOZA CARLOS MEN",
     "OLIVERA LUIS", "ORTIZ ARIEL", "OSORES JORGE", "RODRIGUEZ ESTEBAN", "SAJAMA PATRICIO",
     "TERCERO CARLOS", "VARELA MIGUEL", "ZAMORA PABLO", "MARTINEZ MAXI", "BAZAN HUGO",
-    "BRITOS BRUNO", "CARRE CALUDIO", "CENTENO ANGEL", "FERREIRA PEDRO", "GRAMAJO HECTOR",
+    "BRITOS BRUNO", "CARRE CLAUDIO", "CENTENO ANGEL", "FERREIRA PEDRO", "GRAMAJO HECTOR",
     "JUAREZ VICTOR", "LEGIZAMON DANIEL"
 ]
 
-# --- TIPOS DE TRABAJO Y ESPECIALIDADES OFICIALES ---
 TIPOS_TRABAJO = ["Mejora", "Predictivo", "Preventivo", "Inspeccion", "Correctivo"]
 ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica"]
 
@@ -385,8 +384,10 @@ with tab1:
             tipo_trabajo = st.selectbox("Tipo de Trabajo", TIPOS_TRABAJO)
             
         with col2:
+            # FILTRADO DINÁMICO: Muestra únicamente los equipos correspondientes al sector seleccionado
             equipos_disponibles = SECTORES_EQUIPOS.get(sector, ["OTRO (SIN CLASIFICAR)"])
             equipo = st.selectbox("Equipo", equipos_disponibles)
+            
             especialidad = st.selectbox("Especialidad", ESPECIALIDADES)
             impacto = st.selectbox("Impacto de la Falla", ["Sin Parada", "Parada Parcial", "Parada Total"])
             estado = st.selectbox("Estado", ["Completado", "Pendiente de Repuestos", "En Seguimiento"])
