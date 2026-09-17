@@ -33,7 +33,7 @@ def verificar_password():
 if not verificar_password():
     st.stop()
 
-# --- DICCIONARIO OFICIAL DE SECTORES Y EQUIPOS ---
+# --- DICCIONARIO EXACTO DE SECTORES Y SUS EQUIPOS ---
 SECTORES_EQUIPOS = {
     "APV": [
         "1ER EFECTO", "2DO EFECTO", "3ER EFECTO", "APV BBA DEL DESAREADOR", "BBA CHICA DE PRODUCTO",
@@ -379,12 +379,16 @@ with tab1:
         with col1:
             fecha = st.date_input("Fecha del Trabajo", value=datetime.now())
             turno = st.selectbox("Turno", ["Mañana", "Tarde", "Noche", "Rotativo"])
-            sector = st.selectbox("Sector", list(SECTORES_EQUIPOS.keys()))
+            
+            # Selector de Sector
+            lista_sectores = list(SECTORES_EQUIPOS.keys())
+            sector = st.selectbox("Sector", lista_sectores)
+            
             colaborador = st.selectbox("Nombre de Colaborador (Responsable de carga)", TECNICOS_LISTA)
             tipo_trabajo = st.selectbox("Tipo de Trabajo", TIPOS_TRABAJO)
             
         with col2:
-            # FILTRADO DINÁMICO: Muestra únicamente los equipos correspondientes al sector seleccionado
+            # FILTRADO ESTRICTO Y DINÁMICO DE EQUIPOS POR SECTOR
             equipos_disponibles = SECTORES_EQUIPOS.get(sector, ["OTRO (SIN CLASIFICAR)"])
             equipo = st.selectbox("Equipo", equipos_disponibles)
             
