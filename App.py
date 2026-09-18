@@ -373,12 +373,13 @@ def guardar_datos(df):
     with pd.ExcelWriter(EXCEL_FILE, engine='openpyxl', mode='w') as writer:
         df.to_excel(writer, sheet_name=SHEET_NAME, index=False)
 
-# Interfaz Principal
+# --- CABECERA CON TÍTULO Y FOTO AÉREA CENTRADA Y ELEGANTE ---
 st.title("🔧 Sistema de Registro de Mantenimiento")
 
-# --- VISTA AÉREA COMO PORTADA VISUAL ---
-if os.path.exists("planta.jpg"):
-    st.image("planta.jpg", caption="Vista Aérea - Planta San Miguel", use_container_width=True)
+if os.path.exists("foto de la empresa vista aerea.jpg"):
+    _, col_img, _ = st.columns([1, 6, 1])
+    with col_img:
+        st.image("foto de la empresa vista aerea.jpg", caption="Vista Aérea - Planta San Miguel", use_container_width=True)
 
 st.markdown("---")
 
@@ -424,7 +425,7 @@ with tab1:
         descripcion = st.text_area("Descripción de Tarea")
         comentarios = st.text_input("Comentarios Adicionales (Opcional)")
         
-        submitted = st.form_submit_button("💾 Guardar Registro en Excel")
+        submitted = st.form_submit_button("💾 Guardار Registro en Excel" if False else "💾 Guardar Registro en Excel")
         
         if submitted:
             if not tecnicos_seleccionados:
