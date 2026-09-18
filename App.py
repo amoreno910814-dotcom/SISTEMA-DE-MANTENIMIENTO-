@@ -372,28 +372,28 @@ tab1, tab2 = st.tabs(["📝 Carga de Tareas", "📊 Histórico y Control Visual"
 with tab1:
     st.subheader("Registro de Nueva Tarea Realizada")
     
-    # Usamos on_change para refrescar la pantalla al cambiar el sector
-    def actualizar_sector():
-        pass
+    # 1. SECTOR FUERA DEL FORMULARIO PARA QUE ACTUALICE AL INSTANTE
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        sector_seleccionado = st.selectbox("Sector (Selecciona primero)", list(SECTORES_EQUIPOS.keys()), key="sector_dinamico")
+    with col_f2:
+        # El equipo cambia dinámicamente según el sector elegido arriba
+        equipos_disponibles = SECTORES_EQUIPOS.get(sector_seleccionado, ["OTRO (SIN CLASIFICAR)"])
+        equipo_seleccionado = st.selectbox("Equipo", equipos_disponibles, key="equipo_dinamico")
 
-    with st.form("form_mantenimiento", clear_on_submit=True):
+    st.markdown("---")
+
+    # 2. FORMULARIO PARA EL RESTO DE LOS CAMPOS Y EL BOTÓN DE GUARDAR
+    with st.form("form_mantenimiento", clear_on_submit=False):
         col1, col2 = st.columns(2)
         
         with col1:
             fecha = st.date_input("Fecha del Trabajo", value=datetime.now())
             turno = st.selectbox("Turno", ["Mañana", "Tarde", "Noche", "Rotativo"])
-            
-            # Selector de Sector con recarga automática al cambiar
-            sector = st.selectbox("Sector", list(SECTORES_EQUIPOS.keys()), key="sector_select")
-            
             colaborador = st.selectbox("Nombre de Colaborador (Responsable de carga)", TECNICOS_LISTA)
             tipo_trabajo = st.selectbox("Tipo de Trabajo", TIPOS_TRABAJO)
             
         with col2:
-            # OBTENER EQUIPOS EXACTOS DEL SECTOR SELECCIONADO
-            equipos_disponibles = SECTORES_EQUIPOS.get(sector, ["OTRO (SIN CLASIFICAR)"])
-            equipo = st.selectbox("Equipo", equipos_disponibles, key="equipo_select")
-            
             especialidad = st.selectbox("Especialidad", ESPECIALIDADES)
             impacto = st.selectbox("Impacto de la Falla", ["Sin Parada", "Parada Parcial", "Parada Total"])
             estado = st.selectbox("Estado", ["Completado", "Pendiente de Repuestos", "En Seguimiento"])
@@ -433,8 +433,8 @@ with tab1:
                     'N° tarea Plan.': n_tarea_plan,
                     'Hora Inicio': "",
                     'Hora Fin': "",
-                    'Sector': sector,
-                    'Equipo': equipo,
+                    'Sector': sector_seleccionado,
+                    'Equipo': equipo_seleccionado,
                     'Descripción de Tarea': descripcion,
                     'Ejecutantes': ", ".join(tecnicos_seleccionados),
                     'Comentarios Adicionales': comentarios,
