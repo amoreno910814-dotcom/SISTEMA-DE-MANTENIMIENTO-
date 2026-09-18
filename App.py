@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Configuración de la página
 st.set_page_config(
-    page_title="Sistema de Mantenimiento",
+    page_title="Sistema de Mantenimiento - San Miguel",
     page_icon="🔧",
     layout="wide"
 )
@@ -33,7 +33,17 @@ def verificar_password():
 if not verificar_password():
     st.stop()
 
-# --- DICCIONARIO OFICIAL DE SECTORES Y EQUIPOS ---
+# --- BARRA LATERAL CON EL LOGO ---
+with st.sidebar:
+    if os.path.exists("logo.jpg"):
+        st.image("logo.jpg", use_container_width=True)
+    else:
+        st.title("🍋 San Miguel")
+    st.markdown("---")
+    st.markdown("### Panel de Control")
+    st.info("Sistema de Registro y Mantenimiento Técnico.")
+
+# --- DICCIONARIO DE SECTORES Y EQUIPOS ---
 SECTORES_EQUIPOS = {
     "APV": [
         "1ER EFECTO", "2DO EFECTO", "3ER EFECTO", "APV BBA DEL DESAREADOR", "BBA CHICA DE PRODUCTO",
@@ -365,6 +375,11 @@ def guardar_datos(df):
 
 # Interfaz Principal
 st.title("🔧 Sistema de Registro de Mantenimiento")
+
+# --- VISTA AÉREA COMO PORTADA VISUAL ---
+if os.path.exists("planta.jpg"):
+    st.image("planta.jpg", caption="Vista Aérea - Planta San Miguel", use_container_width=True)
+
 st.markdown("---")
 
 tab1, tab2 = st.tabs(["📝 Carga de Tareas", "📊 Histórico y Control Visual"])
@@ -372,18 +387,15 @@ tab1, tab2 = st.tabs(["📝 Carga de Tareas", "📊 Histórico y Control Visual"
 with tab1:
     st.subheader("Registro de Nueva Tarea Realizada")
     
-    # 1. SECTOR FUERA DEL FORMULARIO PARA QUE ACTUALICE AL INSTANTE
     col_f1, col_f2 = st.columns(2)
     with col_f1:
         sector_seleccionado = st.selectbox("Sector (Selecciona primero)", list(SECTORES_EQUIPOS.keys()), key="sector_dinamico")
     with col_f2:
-        # El equipo cambia dinámicamente según el sector elegido arriba
         equipos_disponibles = SECTORES_EQUIPOS.get(sector_seleccionado, ["OTRO (SIN CLASIFICAR)"])
         equipo_seleccionado = st.selectbox("Equipo", equipos_disponibles, key="equipo_dinamico")
 
     st.markdown("---")
 
-    # 2. FORMULARIO PARA EL RESTO DE LOS CAMPOS Y EL BOTÓN DE GUARDAR
     with st.form("form_mantenimiento", clear_on_submit=False):
         col1, col2 = st.columns(2)
         
