@@ -1,3 +1,4 @@
+import streamlit as str_lit
 import streamlit as st
 import pandas as pd
 import os
@@ -437,7 +438,7 @@ with tab1:
 
     st.markdown("---")
 
-    with st.form("form_mantenimiento", clear_on_submit=False):
+    with st.form("form_mantenimiento", clear_on_submit=True):
         col1, col2 = st.columns(2)
         
         with col1:
@@ -505,6 +506,7 @@ with tab1:
                 guardar_datos(df_actual)
                 
                 st.success(f"¡Registro #{nuevo_id} guardado con éxito en el Excel!")
+                st.rerun()
 
 with tab2:
     st.subheader("Histórico de Tareas Registradas")
