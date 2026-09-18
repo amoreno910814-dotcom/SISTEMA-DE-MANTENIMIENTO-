@@ -6,7 +6,7 @@ import os
 # --- Configuración de la página ---
 st.set_page_config(
     page_title="Gestión de Tareas - San Miguel",
-    page_icon="🟢",
+    page_icon="🍋",
     layout="wide"
 )
 
