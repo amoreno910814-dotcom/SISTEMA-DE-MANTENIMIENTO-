@@ -4,10 +4,10 @@ import os
 import base64
 from datetime import datetime
 
-# ============================================================
+# ===========================================================
 #  SISTEMA DE REGISTRO DE MANTENIMIENTO - SAN MIGUEL
 #  Identidad visual corporativa
-# ============================================================
+# ===========================================================
 
 st.set_page_config(
     page_title="Mantenimiento | San Miguel",
