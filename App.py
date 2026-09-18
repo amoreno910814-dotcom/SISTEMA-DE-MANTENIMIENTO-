@@ -10,6 +10,43 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- ESTILOS CSS PERSONALIZADOS (ESTILO CORPORATIVO SAN MIGUEL) ---
+st.markdown("""
+    <style>
+        /* Ocultar elementos predeterminados de Streamlit para limpieza visual */
+        #MainMenu {visibility: hidden;}
+        footer {visibility: hidden;}
+        
+        /* Cabecera superior simulando barra corporativa verde */
+        .header-container {
+            background-color: #78BE20;
+            padding: 15px 25px;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+            color: white !important;
+        }
+        
+        /* Tarjetas de contenedores con bordes suaves */
+        div[data-testid="stForm"] {
+            background-color: #fafafa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+    </style>
+""", unsafe_allow_html=True)
+
 # --- SISTEMA DE CONTRASEÑA ---
 PASSWORD_CORRECTA = "mantenimiento2026"
 
@@ -373,13 +410,16 @@ def guardar_datos(df):
     with pd.ExcelWriter(EXCEL_FILE, engine='openpyxl', mode='w') as writer:
         df.to_excel(writer, sheet_name=SHEET_NAME, index=False)
 
-# --- CABECERA CON TÍTULO Y FOTO AÉREA CENTRADA Y ELEGANTE ---
-st.title("🔧 Sistema de Registro de Mantenimiento")
+# --- CABECERA ESTILO CORPORATIVO ---
+st.markdown("""
+    <div class="header-container">
+        <h1 class="header-title">🔧 Sistema de Registro de Mantenimiento</h1>
+    </div>
+""", unsafe_allow_html=True)
 
+# --- FOTO AÉREA DE LA PLANTA COMO PORTADA ---
 if os.path.exists("foto de la empresa vista aerea.jpg"):
-    _, col_img, _ = st.columns([1, 6, 1])
-    with col_img:
-        st.image("foto de la empresa vista aerea.jpg", caption="Vista Aérea - Planta San Miguel", use_container_width=True)
+    st.image("foto de la empresa vista aerea.jpg", caption="Vista Aérea - Planta San Miguel", use_container_width=True)
 
 st.markdown("---")
 
@@ -425,7 +465,7 @@ with tab1:
         descripcion = st.text_area("Descripción de Tarea")
         comentarios = st.text_input("Comentarios Adicionales (Opcional)")
         
-        submitted = st.form_submit_button("💾 Guardار Registro en Excel" if False else "💾 Guardar Registro en Excel")
+        submitted = st.form_submit_button("💾 Guardar Registro en Excel")
         
         if submitted:
             if not tecnicos_seleccionados:
