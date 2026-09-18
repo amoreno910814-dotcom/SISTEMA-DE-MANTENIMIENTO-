@@ -427,11 +427,6 @@ tab1, tab2 = st.tabs(["📝 Carga de Tareas", "📊 Histórico y Control Visual"
 
 with tab1:
     st.subheader("Registro de Nueva Tarea Realizada")
-
-    # Mostrar mensaje de éxito si quedó guardado en la memoria de la sesión
-    if "mensaje_exito" in st.session_state:
-        st.success(st.session_state.mensaje_exito)
-        del st.session_state.mensaje_exito # Se borra para que no se repita al volver a tocar otra cosa
     
     col_f1, col_f2 = st.columns(2)
     with col_f1:
@@ -470,8 +465,16 @@ with tab1:
         descripcion = st.text_area("Descripción de Tarea")
         comentarios = st.text_input("Comentarios Adicionales (Opcional)")
         
-        submitted = st.form_submit_button("💾 Guardar Registro en Excel")
+        # Creamos columnas dentro del formulario para ubicar el botón y el aviso lado a lado
+        col_btn, col_msg = st.columns([1, 2])
+        with col_btn:
+            submitted = st.form_submit_button("💾 Guardar Registro en Excel")
         
+        with col_msg:
+            if "mensaje_exito" in st.session_state:
+                st.success(st.session_state.mensaje_exito)
+                del st.session_state.mensaje_exito
+
         if submitted:
             if not tecnicos_seleccionados:
                 st.error("Por favor, selecciona al menos un técnico en 'Ejecutantes'.")
@@ -509,8 +512,7 @@ with tab1:
                 df_actual = pd.concat([df_actual, nueva_fila], ignore_index=True)
                 guardar_datos(df_actual)
                 
-                # Guardamos el mensaje en la sesión y recargamos para limpiar todo
-                st.session_state.mensaje_exito = f"¡Tarea #{nuevo_id} cargada y guardada con éxito en el Excel!"
+                st.session_state.mensaje_exito = f"¡Tarea #{nuevo_id} guardada con éxito!"
                 st.rerun()
 
 with tab2:
