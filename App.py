@@ -1,4 +1,3 @@
-import streamlit as str_lit
 import streamlit as st
 import pandas as pd
 import os
@@ -428,6 +427,11 @@ tab1, tab2 = st.tabs(["📝 Carga de Tareas", "📊 Histórico y Control Visual"
 
 with tab1:
     st.subheader("Registro de Nueva Tarea Realizada")
+
+    # Mostrar mensaje de éxito si quedó guardado en la memoria de la sesión
+    if "mensaje_exito" in st.session_state:
+        st.success(st.session_state.mensaje_exito)
+        del st.session_state.mensaje_exito # Se borra para que no se repita al volver a tocar otra cosa
     
     col_f1, col_f2 = st.columns(2)
     with col_f1:
@@ -505,7 +509,8 @@ with tab1:
                 df_actual = pd.concat([df_actual, nueva_fila], ignore_index=True)
                 guardar_datos(df_actual)
                 
-                st.success(f"¡Registro #{nuevo_id} guardado con éxito en el Excel!")
+                # Guardamos el mensaje en la sesión y recargamos para limpiar todo
+                st.session_state.mensaje_exito = f"¡Tarea #{nuevo_id} cargada y guardada con éxito en el Excel!"
                 st.rerun()
 
 with tab2:
