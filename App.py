@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
+import altair as alt
 import os
 import base64
-from datetime import datetime
+from datetime import datetime, time, timedelta, date
 
 # ============================================================
 #  SISTEMA DE REGISTRO DE MANTENIMIENTO - SAN MIGUEL
@@ -274,6 +275,15 @@ span[data-baseweb="tag"] {{ background: var(--sm-verde) !important; border-radiu
     outline-offset: 2px;
 }}
 
+/* Acción destructiva (confirmar borrado) */
+button[kind="primary"], button[data-testid="stBaseButton-primary"] {{
+    background: #C0392B !important;
+    color: #ffffff !important;
+}}
+button[kind="primary"]:hover, button[data-testid="stBaseButton-primary"]:hover {{
+    background: #96291D !important;
+}}
+
 /* ---------- Indicadores ---------- */
 div[data-testid="stMetric"] {{
     background: #ffffff;
@@ -322,6 +332,44 @@ hr {{ border-color: var(--sm-linea); }}
 }}
 .stTabs [data-baseweb="tab"]:hover {{ background: var(--sm-verde-humo); color: var(--sm-verde-hondo); }}
 
+/* ---------- Filas del detalle con borrado ---------- */
+.sm-fila {{
+    background: #ffffff;
+    border: 1px solid var(--sm-linea);
+    border-left: 4px solid var(--sm-verde-claro);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+}}
+.sm-fila-top {{ display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 15px; }}
+.sm-fila-desc {{ margin: 5px 0 3px 0; font-size: 14.5px; }}
+.sm-fila-meta {{ color: var(--sm-gris); font-size: 13px; }}
+.sm-chip {{
+    background: var(--sm-verde-humo);
+    color: var(--sm-verde-hondo);
+    font-weight: 700;
+    font-size: 13px;
+    padding: 2px 10px;
+    border-radius: 999px;
+}}
+.sm-ayuda {{
+    background: var(--sm-verde-humo);
+    border-radius: 10px;
+    padding: 10px 14px;
+    font-size: 13.5px;
+    color: var(--sm-verde-hondo);
+    margin-top: 26px;
+}}
+.sm-vacio {{
+    background: #ffffff;
+    border: 1px dashed var(--sm-linea);
+    border-radius: 12px;
+    padding: 26px;
+    text-align: center;
+    color: var(--sm-gris);
+    font-size: 14px;
+}}
+/* Solapas en versiones nuevas de Streamlit (react-aria) */
 .stTabs [role="tablist"] {{
     background: #ffffff !important;
     border: 1px solid var(--sm-linea) !important;
@@ -711,6 +759,15 @@ TECNICOS_LISTA = [
     "JUAREZ VICTOR", "LEGIZAMON DANIEL"
 ]
 
+# Horarios cada 5 minutos: se puede escribir para filtrar (ej.: "14:2")
+HORARIOS = [f"{h:02d}:{m:02d}" for h in range(24) for m in range(0, 60, 5)]
+
+
+def texto_a_hora(texto):
+    h, m = texto.split(":")
+    return time(int(h), int(m))
+
+
 TIPOS_TRABAJO = ["Mejora", "Predictivo", "Preventivo", "Inspeccion", "Correctivo"]
 ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica"]
 
@@ -746,6 +803,36 @@ def cargar_datos():
 def guardar_datos(df):
     with pd.ExcelWriter(EXCEL_FILE, engine='openpyxl', mode='w') as writer:
         df.to_excel(writer, sheet_name=SHEET_NAME, index=False)
+
+
+def siguiente_id(df):
+    """Id siguiente sin repetir, aunque se hayan borrado registros."""
+    if df.empty:
+        return 1
+    ids = pd.to_numeric(df['Id'], errors='coerce').dropna()
+    return int(ids.max()) + 1 if not ids.empty else len(df) + 1
+
+
+def minutos_entre(inicio, fin):
+    """Duración en minutos; si la hora de fin es menor, asume que cruzó la medianoche."""
+    base = date(2000, 1, 1)
+    d1 = datetime.combine(base, inicio)
+    d2 = datetime.combine(base, fin)
+    if d2 < d1:
+        d2 += timedelta(days=1)
+    return int((d2 - d1).total_seconds() // 60)
+
+
+def borrar_registro(id_registro):
+    """Elimina una tarea puntual de la planilla."""
+    df = cargar_datos()
+    if df.empty:
+        return False
+    filtro = pd.to_numeric(df['Id'], errors='coerce') != id_registro
+    if filtro.all():
+        return False
+    guardar_datos(df[filtro].reset_index(drop=True))
+    return True
 
 
 df_registros = cargar_datos()
@@ -817,6 +904,10 @@ with tab1:
         unsafe_allow_html=True
     )
 
+    if "mensaje_exito" in st.session_state:
+        st.success(st.session_state.mensaje_exito)
+        del st.session_state.mensaje_exito
+
     with st.form("form_mantenimiento", clear_on_submit=True):
         st.markdown('<div class="sm-titulo">Datos del trabajo</div>', unsafe_allow_html=True)
 
@@ -835,9 +926,21 @@ with tab1:
                                                 help="Podés elegir uno o varios técnicos.",
                                                 **_kw_placeholder("Elegí uno o varios técnicos"))
 
-        col_t1, col_t2, col_t3 = st.columns(3)
-        with col_t1:
-            duracion = st.number_input("Duración [min]", min_value=0, value=60, step=15)
+        st.markdown('<div class="sm-titulo">Horario del trabajo</div>', unsafe_allow_html=True)
+        col_h1, col_h2, col_h3 = st.columns([1, 1, 1.4])
+        with col_h1:
+            hora_inicio_txt = st.selectbox("Hora de inicio", HORARIOS,
+                                           index=HORARIOS.index("08:00"))
+        with col_h2:
+            hora_fin_txt = st.selectbox("Hora de fin", HORARIOS,
+                                        index=HORARIOS.index("09:00"))
+        with col_h3:
+            st.markdown(
+                '<div class="sm-ayuda">Poné el horario real en que se hizo el trabajo, '
+                'no la hora en que cargás el registro. La duración se calcula sola.</div>',
+                unsafe_allow_html=True)
+
+        col_t2, col_t3 = st.columns(2)
         with col_t2:
             n_tarea_plan = st.text_input("N° tarea planificada", placeholder="Opcional")
         with col_t3:
@@ -849,18 +952,7 @@ with tab1:
                                    placeholder="Contá qué se hizo, con qué repuestos y cómo quedó el equipo.")
         comentarios = st.text_input("Comentarios adicionales", placeholder="Opcional")
 
-        st.markdown("---")
-
-        # Columnas dentro del formulario para alinear el botón de guardado y la leyenda a la par
-        col_btn, col_msg = st.columns([1, 2], vertical_alignment="center")
-        
-        with col_btn:
-            submitted = st.form_submit_button("Guardar registro")
-            
-        with col_msg:
-            if "mensaje_exito" in st.session_state:
-                st.success(st.session_state.mensaje_exito)
-                del st.session_state.mensaje_exito
+        submitted = st.form_submit_button("Guardar registro")
 
         if submitted:
             if not tecnicos_seleccionados:
@@ -869,7 +961,10 @@ with tab1:
                 st.error("Falta la descripción de la tarea.")
             else:
                 df_actual = cargar_datos()
-                nuevo_id = len(df_actual) + 1
+                nuevo_id = siguiente_id(df_actual)
+                hora_inicio = texto_a_hora(hora_inicio_txt)
+                hora_fin = texto_a_hora(hora_fin_txt)
+                duracion = minutos_entre(hora_inicio, hora_fin)
 
                 nueva_fila = pd.DataFrame([{
                     'Id': nuevo_id,
@@ -879,8 +974,8 @@ with tab1:
                     'Nombre de Colaborador': colaborador,
                     'Evento Reportado': evento_reportado,
                     'N° tarea Plan.': n_tarea_plan,
-                    'Hora Inicio': "",
-                    'Hora Fin': "",
+                    'Hora Inicio': hora_inicio_txt,
+                    'Hora Fin': hora_fin_txt,
                     'Sector': sector_seleccionado,
                     'Equipo': equipo_seleccionado,
                     'Descripción de Tarea': descripcion,
@@ -899,7 +994,10 @@ with tab1:
                 df_actual = pd.concat([df_actual, nueva_fila], ignore_index=True)
                 guardar_datos(df_actual)
 
-                st.session_state.mensaje_exito = f"¡Tarea #{nuevo_id} guardada con éxito!"
+                st.session_state.mensaje_exito = (
+                    f"Tarea #{nuevo_id} guardada en la planilla. "
+                    f"Horario {hora_inicio_txt} a {hora_fin_txt} — {duracion} min."
+                )
                 st.rerun()
 
 # ============================================================
@@ -953,21 +1051,124 @@ with tab2:
                 dfv['Equipo'].astype(str).str.lower().str.contains(t, na=False)
             ]
 
-        g1, g2 = st.columns([1.3, 1])
-        with g1:
-            st.markdown('<div class="sm-titulo">Tareas por sector</div>', unsafe_allow_html=True)
-            por_sector = dfv['Sector'].astype(str).value_counts().head(12)
-            if not por_sector.empty:
-                st.bar_chart(por_sector, color="#6BA82E", height=300)
-        with g2:
-            st.markdown('<div class="sm-titulo">Tareas por especialidad</div>', unsafe_allow_html=True)
-            if 'Especialidad' in dfv:
-                por_esp = dfv['Especialidad'].astype(str).value_counts()
-                if not por_esp.empty:
-                    st.bar_chart(por_esp, color="#8CC63F", height=300)
+        def conteo(columna, tope=None):
+            if columna not in dfv:
+                return pd.Series(dtype=int)
+            serie = dfv[columna].dropna().astype(str).str.strip()
+            serie = serie[serie != ""].value_counts()
+            return serie.head(tope) if tope else serie
 
+        def grafico(contenedor, titulo, datos, color):
+            with contenedor:
+                st.markdown(f'<div class="sm-titulo">{titulo}</div>', unsafe_allow_html=True)
+                if datos.empty:
+                    st.markdown('<div class="sm-vacio">Sin datos con estos filtros.</div>',
+                                unsafe_allow_html=True)
+                    return
+                d = datos.reset_index()
+                d.columns = ['Categoría', 'Tareas']
+                barras = (
+                    alt.Chart(d)
+                    .mark_bar(color=color, cornerRadiusTopLeft=4, cornerRadiusTopRight=4, size=34)
+                    .encode(
+                        x=alt.X('Categoría:N', sort='-y', title=None,
+                                axis=alt.Axis(labelAngle=-35, labelLimit=150, labelFontSize=11)),
+                        y=alt.Y('Tareas:Q', title=None, axis=alt.Axis(tickMinStep=1, grid=True)),
+                        tooltip=['Categoría', 'Tareas']
+                    )
+                    .properties(height=280)
+                    .configure_view(strokeWidth=0)
+                    .configure_axis(labelColor='#6E7A70', gridColor='#E8EDE4', domainColor='#DCE4D6')
+                )
+                st.altair_chart(barras, **ANCHO)
+
+        # Los ejecutantes vienen separados por coma: se cuenta a cada técnico por separado
+        if 'Ejecutantes' in dfv and not dfv.empty:
+            por_tecnico = (dfv['Ejecutantes'].dropna().astype(str)
+                           .str.split(",").explode().str.strip())
+            por_tecnico = por_tecnico[por_tecnico != ""].value_counts().head(15)
+        else:
+            por_tecnico = pd.Series(dtype=int)
+
+        g1, g2 = st.columns(2)
+        grafico(g1, "Tareas por sector", conteo('Sector', 12), "#6BA82E")
+        grafico(g2, "Tareas por equipo", conteo('Equipo', 12), "#4B7F22")
+
+        g3, g4 = st.columns(2)
+        grafico(g3, "Tareas por técnico", por_tecnico, "#8CC63F")
+        grafico(g4, "Tareas por turno", conteo('Turno'), "#2F6B2F")
+
+        g5, g6 = st.columns(2)
+        grafico(g5, "Tareas por tipo de trabajo", conteo('Tipo de Trabajo'), "#6BA82E")
+        grafico(g6, "Tareas por especialidad", conteo('Especialidad'), "#A7D44F")
+
+        # ---------- Detalle con borrado por registro ----------
         st.markdown(f'<div class="sm-titulo">Detalle ({len(dfv)} registros)</div>', unsafe_allow_html=True)
-        st.dataframe(dfv, **ANCHO, hide_index=True, height=420)
+
+        if "borrar_id" not in st.session_state:
+            st.session_state.borrar_id = None
+        if "mensaje_borrado" in st.session_state:
+            st.success(st.session_state.mensaje_borrado)
+            del st.session_state.mensaje_borrado
+
+        dfd = dfv.iloc[::-1]  # el último cargado, primero
+        por_pagina = 10
+        total_paginas = max(1, -(-len(dfd) // por_pagina))
+        pagina = 1
+        if total_paginas > 1:
+            cp1, cp2 = st.columns([1, 4])
+            with cp1:
+                pagina = st.number_input(f"Página (de {total_paginas})", min_value=1,
+                                         max_value=total_paginas, value=1, step=1)
+        recorte = dfd.iloc[(pagina - 1) * por_pagina: pagina * por_pagina]
+
+        for _, fila in recorte.iterrows():
+            try:
+                id_fila = int(fila['Id'])
+            except Exception:
+                continue
+
+            col_txt, col_bin = st.columns([12, 1])
+            with col_txt:
+                horario = f"{fila.get('Hora Inicio', '')} a {fila.get('Hora Fin', '')}".strip()
+                horario = horario if horario not in ("a", "a ") else ""
+                st.markdown(f"""
+                    <div class="sm-fila">
+                        <div class="sm-fila-top">
+                            <span class="sm-chip">#{id_fila}</span>
+                            <b>{fila.get('Sector', '')} — {fila.get('Equipo', '')}</b>
+                            <span class="sm-fila-meta">{fila.get('Fecha', '')} · {fila.get('Turno', '')}
+                            {(' · ' + horario) if horario else ''} · {fila.get('Duración [min]', '')} min</span>
+                        </div>
+                        <div class="sm-fila-desc">{fila.get('Descripción de Tarea', '')}</div>
+                        <div class="sm-fila-meta">{fila.get('Ejecutantes', '')} · {fila.get('Especialidad', '')}
+                        · {fila.get('Tipo de Trabajo', '')} · {fila.get('Estado', '')}</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            with col_bin:
+                if st.button("🗑", key=f"bin_{id_fila}", help="Eliminar este registro"):
+                    st.session_state.borrar_id = id_fila
+                    st.rerun()
+
+            if st.session_state.borrar_id == id_fila:
+                st.warning(f"Vas a eliminar la tarea #{id_fila}. Esta acción no se puede deshacer.")
+                cb1, cb2, cb3 = st.columns([1, 1, 4])
+                with cb1:
+                    if st.button("Sí, eliminar", key=f"si_{id_fila}", type="primary"):
+                        ok = borrar_registro(id_fila)
+                        st.session_state.borrar_id = None
+                        st.session_state.mensaje_borrado = (
+                            f"Tarea #{id_fila} eliminada de la planilla." if ok
+                            else f"No se encontró la tarea #{id_fila}."
+                        )
+                        st.rerun()
+                with cb2:
+                    if st.button("Cancelar", key=f"no_{id_fila}"):
+                        st.session_state.borrar_id = None
+                        st.rerun()
+
+        with st.expander("Ver la tabla completa con todas las columnas"):
+            st.dataframe(dfv, **ANCHO, hide_index=True, height=420)
 
         if os.path.exists(EXCEL_FILE):
             with open(EXCEL_FILE, "rb") as f:
