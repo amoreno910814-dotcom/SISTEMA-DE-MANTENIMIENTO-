@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from streamlit_gsheets import GSheetsConnection
-from io import BytesIO
 import os
 import base64
 from datetime import datetime, time, timedelta, date
@@ -774,11 +772,10 @@ TIPOS_TRABAJO = ["Mejora", "Predictivo", "Preventivo", "Inspeccion", "Correctivo
 ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica"]
 
 # ------------------------------------------------------------
-#  GOOGLE SHEETS (fuente de datos persistente)
+#  ARCHIVO EXCEL
 # ------------------------------------------------------------
-# El nombre de la pestaña dentro de tu Google Sheet. Si la tuya se llama
-# distinto (ej. "Tareas Realizadas"), cambiala acá.
-WORKSHEET = "Hoja1"
+EXCEL_FILE = "TAREAS REALIZADAS POR LOS TECNICOS.xlsx"
+SHEET_NAME = "Tareas Realizadas"
 
 COLUMNAS = [
     'Id', 'Hora de inicio', 'Fecha', 'Turno', 'Nombre de Colaborador',
@@ -793,29 +790,19 @@ DIAS_ES = {
     "Thursday": "Jueves", "Friday": "Viernes", "Saturday": "Sábado", "Sunday": "Domingo"
 }
 
-conn = st.connection("gsheets", type=GSheetsConnection)
-
 
 def cargar_datos():
-    try:
-        # ttl=0: siempre trae la version mas nueva, nunca una copia vieja en cache
-        df = conn.read(worksheet=WORKSHEET, ttl=0)
-        if df is None or df.dropna(how="all").empty:
-            return pd.DataFrame(columns=COLUMNAS)
-        for col in COLUMNAS:
-            if col not in df.columns:
-                df[col] = ""
-        return df[COLUMNAS]
-    except Exception as e:
-        st.error(f"No se pudo leer Google Sheets: {e}")
-        return pd.DataFrame(columns=COLUMNAS)
+    if os.path.exists(EXCEL_FILE):
+        try:
+            return pd.read_excel(EXCEL_FILE, sheet_name=SHEET_NAME)
+        except Exception:
+            pass
+    return pd.DataFrame(columns=COLUMNAS)
 
 
 def guardar_datos(df):
-    try:
-        conn.update(worksheet=WORKSHEET, data=df[COLUMNAS])
-    except Exception as e:
-        st.error(f"No se pudo guardar en Google Sheets: {e}")
+    with pd.ExcelWriter(EXCEL_FILE, engine='openpyxl', mode='w') as writer:
+        df.to_excel(writer, sheet_name=SHEET_NAME, index=False)
 
 
 def siguiente_id(df):
@@ -827,7 +814,7 @@ def siguiente_id(df):
 
 
 def minutos_entre(inicio, fin):
-    """Duracion en minutos; si la hora de fin es menor, asume que cruzo la medianoche."""
+    """Duración en minutos; si la hora de fin es menor, asume que cruzó la medianoche."""
     base = date(2000, 1, 1)
     d1 = datetime.combine(base, inicio)
     d2 = datetime.combine(base, fin)
@@ -837,12 +824,11 @@ def minutos_entre(inicio, fin):
 
 
 def borrar_registro(id_registro):
-    """Elimina una tarea puntual de la hoja de calculo."""
+    """Elimina una tarea puntual de la planilla."""
     df = cargar_datos()
     if df.empty:
         return False
-    df['Id'] = pd.to_numeric(df['Id'], errors='coerce')
-    filtro = df['Id'] != id_registro
+    filtro = pd.to_numeric(df['Id'], errors='coerce') != id_registro
     if filtro.all():
         return False
     guardar_datos(df[filtro].reset_index(drop=True))
@@ -872,9 +858,8 @@ with st.sidebar:
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
-        '<div class="sm-nota">Cada registro se guarda al instante en la '
-        '<b>Google Sheet</b> conectada a la app. No se pierde nada aunque '
-        'la app este un tiempo sin uso.</div>',
+        '<div class="sm-nota">Cada registro se guarda al instante en la planilla '
+        '<b>TAREAS REALIZADAS POR LOS TECNICOS.xlsx</b>, en esta misma carpeta.</div>',
         unsafe_allow_html=True
     )
 
@@ -1185,12 +1170,11 @@ with tab2:
         with st.expander("Ver la tabla completa con todas las columnas"):
             st.dataframe(dfv, **ANCHO, hide_index=True, height=420)
 
-        buffer_excel = BytesIO()
-        with pd.ExcelWriter(buffer_excel, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name="Tareas", index=False)
-        st.download_button(
-            label="Descargar planilla completa",
-            data=buffer_excel.getvalue(),
-            file_name="TAREAS_REALIZADAS_POR_LOS_TECNICOS.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        if os.path.exists(EXCEL_FILE):
+            with open(EXCEL_FILE, "rb") as f:
+                st.download_button(
+                    label="Descargar planilla completa",
+                    data=f,
+                    file_name="TAREAS_REALIZADAS_POR_LOS_TECNICOS.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
