@@ -5,8 +5,8 @@ from streamlit_gsheets import GSheetsConnection
 from io import BytesIO
 import os
 import base64
-#from datetime import datetime, time, timedelta, date
 from datetime import datetime, time, timedelta, date
+
 
 # ============================================================
 #  SISTEMA DE REGISTRO DE MANTENIMIENTO - SAN MIGUEL
@@ -981,13 +981,11 @@ with tab1:
                 hora_inicio = texto_a_hora(hora_inicio_txt)
                 hora_fin = texto_a_hora(hora_fin_txt)
                 duracion = minutos_entre(hora_inicio, hora_fin)
-# Definir la zona horaria de Argentina (UTC-3)
-                tz_argentina = timezone(timedelta(hours=-3))
+
                 
                 nueva_fila = pd.DataFrame([{
                     'Id': nuevo_id,
-                    #'Hora de inicio': datetime.now().strftime("%H:%M:%S"),
-                    'Hora de inicio': datetime.now(tz_argentina).strftime("%H:%M:%S"),
+                    'Hora de inicio': datetime.now().strftime("%H:%M:%S"),
                     'Fecha': str(fecha),
                     'Turno': turno,
                     'Nombre de Colaborador': colaborador,
