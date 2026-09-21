@@ -874,8 +874,7 @@ with st.sidebar:
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
         '<div class="sm-nota">Cada registro se guarda al instante en la '
-        '<b>Google Sheet</b> conectada a la app. No se pierde nada aunque '
-        'la app este un tiempo sin uso.</div>',
+        '<b>Google Sheet</b> conectada a la app.</div>',
         unsafe_allow_html=True
     )
 
