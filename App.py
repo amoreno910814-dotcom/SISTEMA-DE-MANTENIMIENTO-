@@ -1,12 +1,9 @@
 import streamlit as st
 import pandas as pd
 import altair as alt
-from streamlit_gsheets import GSheetsConnection
-from io import BytesIO
 import os
 import base64
 from datetime import datetime, time, timedelta, date
-
 
 # ============================================================
 #  SISTEMA DE REGISTRO DE MANTENIMIENTO - SAN MIGUEL
@@ -182,6 +179,13 @@ section[data-testid="stSidebar"] h3 {{ color: #ffffff !important; }}
     line-height: 1.5;
 }}
 .sm-dato {{ display: flex; justify-content: space-between; padding: 9px 2px; border-bottom: 1px solid rgba(255,255,255,0.12); font-size: 14px; }}
+.sm-firma {{
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.02em;
+    margin-top: 14px;
+}}
 .sm-dato b {{ color: var(--sm-verde-claro) !important; font-size: 16px; }}
 
 /* ---------- Solapas ---------- */
@@ -775,11 +779,10 @@ TIPOS_TRABAJO = ["Mejora", "Predictivo", "Preventivo", "Inspeccion", "Correctivo
 ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica"]
 
 # ------------------------------------------------------------
-#  GOOGLE SHEETS (fuente de datos persistente)
+#  ARCHIVO EXCEL
 # ------------------------------------------------------------
-# El nombre de la pestaña dentro de tu Google Sheet. Si la tuya se llama
-# distinto (ej. "Tareas Realizadas"), cambiala acá.
-WORKSHEET = "Hoja1"
+EXCEL_FILE = "TAREAS REALIZADAS POR LOS TECNICOS.xlsx"
+SHEET_NAME = "Tareas Realizadas"
 
 COLUMNAS = [
     'Id', 'Hora de inicio', 'Fecha', 'Turno', 'Nombre de Colaborador',
@@ -794,29 +797,19 @@ DIAS_ES = {
     "Thursday": "Jueves", "Friday": "Viernes", "Saturday": "Sábado", "Sunday": "Domingo"
 }
 
-conn = st.connection("gsheets", type=GSheetsConnection)
-
 
 def cargar_datos():
-    try:
-        # ttl=0: siempre trae la version mas nueva, nunca una copia vieja en cache
-        df = conn.read(worksheet=WORKSHEET, ttl=0)
-        if df is None or df.dropna(how="all").empty:
-            return pd.DataFrame(columns=COLUMNAS)
-        for col in COLUMNAS:
-            if col not in df.columns:
-                df[col] = ""
-        return df[COLUMNAS]
-    except Exception as e:
-        st.error(f"No se pudo leer Google Sheets: {e}")
-        return pd.DataFrame(columns=COLUMNAS)
+    if os.path.exists(EXCEL_FILE):
+        try:
+            return pd.read_excel(EXCEL_FILE, sheet_name=SHEET_NAME)
+        except Exception:
+            pass
+    return pd.DataFrame(columns=COLUMNAS)
 
 
 def guardar_datos(df):
-    try:
-        conn.update(worksheet=WORKSHEET, data=df[COLUMNAS])
-    except Exception as e:
-        st.error(f"No se pudo guardar en Google Sheets: {e}")
+    with pd.ExcelWriter(EXCEL_FILE, engine='openpyxl', mode='w') as writer:
+        df.to_excel(writer, sheet_name=SHEET_NAME, index=False)
 
 
 def siguiente_id(df):
@@ -828,7 +821,7 @@ def siguiente_id(df):
 
 
 def minutos_entre(inicio, fin):
-    """Duracion en minutos; si la hora de fin es menor, asume que cruzo la medianoche."""
+    """Duración en minutos; si la hora de fin es menor, asume que cruzó la medianoche."""
     base = date(2000, 1, 1)
     d1 = datetime.combine(base, inicio)
     d2 = datetime.combine(base, fin)
@@ -838,12 +831,11 @@ def minutos_entre(inicio, fin):
 
 
 def borrar_registro(id_registro):
-    """Elimina una tarea puntual de la hoja de calculo."""
+    """Elimina una tarea puntual de la planilla."""
     df = cargar_datos()
     if df.empty:
         return False
-    df['Id'] = pd.to_numeric(df['Id'], errors='coerce')
-    filtro = df['Id'] != id_registro
+    filtro = pd.to_numeric(df['Id'], errors='coerce') != id_registro
     if filtro.all():
         return False
     guardar_datos(df[filtro].reset_index(drop=True))
@@ -873,8 +865,8 @@ with st.sidebar:
 
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown(
-        '<div class="sm-nota">Cada registro se guarda al instante en la '
-        '<b>Google Sheet</b> conectada a la app.</div>',
+        '<div class="sm-nota">Cada registro se guarda al instante en la planilla '
+        '<b>TAREAS REALIZADAS POR LOS TECNICOS.xlsx</b>, en esta misma carpeta.</div>',
         unsafe_allow_html=True
     )
 
@@ -882,6 +874,8 @@ with st.sidebar:
     if st.button("Cerrar sesión", **ANCHO):
         st.session_state.autenticado = False
         st.rerun()
+
+    st.markdown('<div class="sm-firma">App by Ing. Moreno Antonio</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------
 #  PORTADA
@@ -904,6 +898,12 @@ tab1, tab2 = st.tabs(["Carga de tareas", "Histórico y control"])
 #  TAB 1 — CARGA
 # ============================================================
 with tab1:
+    st.markdown('<div class="sm-titulo">Tarea planificada</div>', unsafe_allow_html=True)
+    n_tarea_plan = st.text_input(
+        "N° tarea planificada", placeholder="Opcional — dejalo vacío si es una tarea no planificada",
+        key="n_tarea_plan_input"
+    )
+
     st.markdown('<div class="sm-titulo">Dónde se hizo el trabajo</div>', unsafe_allow_html=True)
 
     col_f1, col_f2 = st.columns(2)
@@ -955,11 +955,7 @@ with tab1:
                 'no la hora en que cargás el registro. La duración se calcula sola.</div>',
                 unsafe_allow_html=True)
 
-        col_t2, col_t3 = st.columns(2)
-        with col_t2:
-            n_tarea_plan = st.text_input("N° tarea planificada", placeholder="Opcional")
-        with col_t3:
-            n_piezas = st.text_input("N° de pieza / repuesto", placeholder="Opcional")
+        n_piezas = st.text_input("N° de pieza / repuesto", placeholder="Opcional")
 
         st.markdown('<div class="sm-titulo">Qué pasó</div>', unsafe_allow_html=True)
         evento_reportado = st.text_input("Evento reportado", placeholder="Ej.: pérdida en sello de bomba")
@@ -981,7 +977,6 @@ with tab1:
                 hora_fin = texto_a_hora(hora_fin_txt)
                 duracion = minutos_entre(hora_inicio, hora_fin)
 
-                
                 nueva_fila = pd.DataFrame([{
                     'Id': nuevo_id,
                     'Hora de inicio': datetime.now().strftime("%H:%M:%S"),
@@ -1083,32 +1078,44 @@ with tab2:
                     return
                 d = datos.reset_index()
                 d.columns = ['Categoría', 'Tareas']
-                barras = (
-                    alt.Chart(d)
-                    .mark_bar(color=color, cornerRadiusTopLeft=4, cornerRadiusTopRight=4, size=34)
-                    .encode(
-                        x=alt.X('Categoría:N', sort='-y', title=None,
-                                axis=alt.Axis(labelAngle=-35, labelLimit=150, labelFontSize=11)),
-                        y=alt.Y('Tareas:Q', title=None, axis=alt.Axis(tickMinStep=1, grid=True)),
-                        tooltip=['Categoría', 'Tareas']
-                    )
-                    .properties(height=280)
+
+                # Barras horizontales: con muchas categorías (ej. técnicos) se leen
+                # mejor que verticales, y no hace falta rotar ni cortar el texto.
+                alto = max(220, 44 * len(d) + 40)
+
+                base = alt.Chart(d).encode(
+                    y=alt.Y('Categoría:N', sort='-x', title=None,
+                            axis=alt.Axis(labelLimit=220, labelFontSize=12),
+                            scale=alt.Scale(paddingInner=0.45, paddingOuter=0.25)),
+                    x=alt.X('Tareas:Q', title=None,
+                            axis=alt.Axis(tickMinStep=1, grid=True)),
+                )
+                barras = base.mark_bar(
+                    color=color, cornerRadiusTopRight=5, cornerRadiusBottomRight=5
+                )
+                etiquetas = base.mark_text(
+                    align='left', dx=6, fontSize=12, color='#3A453E'
+                ).encode(text='Tareas:Q')
+
+                grafico_final = (
+                    (barras + etiquetas)
+                    .properties(height=alto)
                     .configure_view(strokeWidth=0)
                     .configure_axis(labelColor='#6E7A70', gridColor='#E8EDE4', domainColor='#DCE4D6')
                 )
-                st.altair_chart(barras, **ANCHO)
+                st.altair_chart(grafico_final, **ANCHO)
 
         # Los ejecutantes vienen separados por coma: se cuenta a cada técnico por separado
         if 'Ejecutantes' in dfv and not dfv.empty:
             por_tecnico = (dfv['Ejecutantes'].dropna().astype(str)
                            .str.split(",").explode().str.strip())
-            por_tecnico = por_tecnico[por_tecnico != ""].value_counts().head(15)
+            por_tecnico = por_tecnico[por_tecnico != ""].value_counts().head(10)
         else:
             por_tecnico = pd.Series(dtype=int)
 
         g1, g2 = st.columns(2)
-        grafico(g1, "Tareas por sector", conteo('Sector', 12), "#6BA82E")
-        grafico(g2, "Tareas por equipo", conteo('Equipo', 12), "#4B7F22")
+        grafico(g1, "Tareas por sector", conteo('Sector', 8), "#6BA82E")
+        grafico(g2, "Tareas por equipo", conteo('Equipo', 8), "#4B7F22")
 
         g3, g4 = st.columns(2)
         grafico(g3, "Tareas por técnico", por_tecnico, "#8CC63F")
@@ -1186,12 +1193,11 @@ with tab2:
         with st.expander("Ver la tabla completa con todas las columnas"):
             st.dataframe(dfv, **ANCHO, hide_index=True, height=420)
 
-        buffer_excel = BytesIO()
-        with pd.ExcelWriter(buffer_excel, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name="Tareas", index=False)
-        st.download_button(
-            label="Descargar planilla completa",
-            data=buffer_excel.getvalue(),
-            file_name="TAREAS_REALIZADAS_POR_LOS_TECNICOS.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+        if os.path.exists(EXCEL_FILE):
+            with open(EXCEL_FILE, "rb") as f:
+                st.download_button(
+                    label="Descargar planilla completa",
+                    data=f,
+                    file_name="TAREAS_REALIZADAS_POR_LOS_TECNICOS.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
