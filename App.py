@@ -5,7 +5,20 @@ from streamlit_gsheets import GSheetsConnection
 from io import BytesIO
 import os
 import base64
-from datetime import datetime, time, timedelta, date
+from datetime import datetime, time, timedelta, date, timezone
+
+# Hora de Argentina (UTC-3, sin horario de verano). Streamlit Cloud corre en UTC,
+# por eso no se puede usar datetime.now() a secas.
+try:
+    from zoneinfo import ZoneInfo
+    ZONA_AR = ZoneInfo("America/Argentina/Buenos_Aires")
+except Exception:
+    ZONA_AR = timezone(timedelta(hours=-3))
+
+
+def ahora_ar():
+    """Fecha y hora actuales en Argentina."""
+    return datetime.now(ZONA_AR)
 
 # ============================================================
 #  SISTEMA DE REGISTRO DE MANTENIMIENTO - SAN MIGUEL
@@ -867,7 +880,7 @@ with st.sidebar:
     total = len(df_registros)
     hoy = 0
     if total and 'Fecha' in df_registros:
-        hoy = (df_registros['Fecha'].astype(str) == str(datetime.now().date())).sum()
+        hoy = (df_registros['Fecha'].astype(str) == str(ahora_ar().date())).sum()
 
     st.markdown(f"""
         <div class="sm-dato"><span>Tareas registradas</span><b>{total}</b></div>
@@ -942,7 +955,7 @@ with tab1:
 
         col1, col2 = st.columns(2)
         with col1:
-            fecha = st.date_input("Fecha del trabajo", value=datetime.now())
+            fecha = st.date_input("Fecha del trabajo", value=ahora_ar().date())
             turno = st.selectbox("Turno", ["Mañana", "Tarde", "Noche", "Rotativo"])
             colaborador = st.selectbox("Colaborador que carga el registro", TECNICOS_LISTA)
             tipo_trabajo = st.selectbox("Tipo de trabajo", TIPOS_TRABAJO)
@@ -993,7 +1006,7 @@ with tab1:
 
                 nueva_fila = pd.DataFrame([{
                     'Id': nuevo_id,
-                    'Hora de inicio': datetime.now().strftime("%H:%M:%S"),
+                    'Hora de inicio': ahora_ar().strftime("%H:%M:%S"),
                     'Fecha': str(fecha),
                     'Turno': turno,
                     'Nombre de Colaborador': colaborador,
