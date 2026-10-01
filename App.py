@@ -977,7 +977,9 @@ with tab1:
             colaborador = st.selectbox("Colaborador que carga el registro", TECNICOS_LISTA)
             tipo_trabajo = st.selectbox("Tipo de trabajo *", [SELECCIONAR] + TIPOS_TRABAJO)
         with col2:
-            especialidad = st.selectbox("Especialidad *", [SELECCIONAR] + ESPECIALIDADES)
+            especialidades_sel = st.multiselect("Especialidad *", ESPECIALIDADES,
+                                                help="Podés elegir una o varias especialidades.",
+                                                **_kw_placeholder("Elegí una o varias especialidades"))
             impacto = st.selectbox("Impacto de la falla", ["Sin Parada", "Parada Parcial", "Parada Total"])
             estado = st.selectbox("Estado *", [SELECCIONAR, "Completado", "Pendiente de Repuestos", "En Curso"])
 
@@ -1017,7 +1019,7 @@ with tab1:
                 faltantes.append("Equipo")
             if turno == SELECCIONAR:
                 faltantes.append("Turno")
-            if especialidad == SELECCIONAR:
+            if not especialidades_sel:
                 faltantes.append("Especialidad")
             if tipo_trabajo == SELECCIONAR:
                 faltantes.append("Tipo de trabajo")
@@ -1060,7 +1062,7 @@ with tab1:
                     'N° de p.': n_piezas,
                     'Día': DIAS_ES.get(fecha.strftime("%A"), fecha.strftime("%A")),
                     'Aprobación': "Pendiente",
-                    'Especialidad': especialidad,
+                    'Especialidad': ", ".join(especialidades_sel),
                     'Tipo de Trabajo': tipo_trabajo
                 }])
 
@@ -1183,9 +1185,17 @@ with tab2:
         grafico(g3, "Tareas por técnico", por_tecnico, "#8CC63F")
         grafico(g4, "Tareas por turno", conteo('Turno'), "#2F6B2F")
 
+        # Las especialidades también vienen separadas por coma: se cuenta cada una por separado
+        if 'Especialidad' in dfv and not dfv.empty:
+            por_especialidad = (dfv['Especialidad'].dropna().astype(str)
+                                .str.split(",").explode().str.strip())
+            por_especialidad = por_especialidad[por_especialidad != ""].value_counts()
+        else:
+            por_especialidad = pd.Series(dtype=int)
+
         g5, g6 = st.columns(2)
         grafico(g5, "Tareas por tipo de trabajo", conteo('Tipo de Trabajo'), "#6BA82E")
-        grafico(g6, "Tareas por especialidad", conteo('Especialidad'), "#A7D44F")
+        grafico(g6, "Tareas por especialidad", por_especialidad, "#A7D44F")
 
         # ---------- Detalle con borrado por registro ----------
         st.markdown(f'<div class="sm-titulo">Detalle ({len(dfv)} registros)</div>', unsafe_allow_html=True)
