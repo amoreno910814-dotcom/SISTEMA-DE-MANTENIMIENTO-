@@ -791,6 +791,13 @@ TIPOS_TRABAJO = ["Mejora", "Predictivo", "Preventivo", "Inspeccion", "Correctivo
 ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica"]
 SELECCIONAR = "— Seleccionar —"   # opción inicial: obliga al técnico a elegir de verdad
 TURNOS = ["Mañana", "Tarde", "Noche", "Rotativo"]
+EQUIPO_SIN_CLASIFICAR = "OTRO (SIN CLASIFICAR)"
+SECTOR_SIN_CLASIFICAR = "Sector (SIN CLASIFICAR)"
+
+# Todos los sectores tienen la opción "OTRO (SIN CLASIFICAR)" al final de su lista de equipos,
+# por si el equipo no está registrado (las variantes tipo "OTRO ... TASTES 1" se conservan).
+for _sector, _equipos in SECTORES_EQUIPOS.items():
+    _equipos[:] = [e for e in _equipos if e != EQUIPO_SIN_CLASIFICAR] + [EQUIPO_SIN_CLASIFICAR]
 
 # ------------------------------------------------------------
 #  GOOGLE SHEETS (fuente de datos persistente)
@@ -934,13 +941,13 @@ with tab1:
 
     col_f1, col_f2 = st.columns(2)
     with col_f1:
-        sector_seleccionado = st.selectbox("Sector *", [SELECCIONAR] + list(SECTORES_EQUIPOS.keys()),
+        sector_seleccionado = st.selectbox("Sector *", [SELECCIONAR] + list(SECTORES_EQUIPOS.keys()) + [SECTOR_SIN_CLASIFICAR],
                                            key="sector_dinamico")
     with col_f2:
         if sector_seleccionado == SELECCIONAR:
             equipos_disponibles = [SELECCIONAR]
         else:
-            equipos_disponibles = [SELECCIONAR] + SECTORES_EQUIPOS.get(sector_seleccionado, ["OTRO (SIN CLASIFICAR)"])
+            equipos_disponibles = [SELECCIONAR] + SECTORES_EQUIPOS.get(sector_seleccionado, [EQUIPO_SIN_CLASIFICAR])
         equipo_seleccionado = st.selectbox("Equipo *", equipos_disponibles, key="equipo_dinamico")
 
     if sector_seleccionado == SELECCIONAR or equipo_seleccionado == SELECCIONAR:
