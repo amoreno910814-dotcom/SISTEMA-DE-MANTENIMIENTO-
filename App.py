@@ -979,7 +979,7 @@ with tab1:
         with col2:
             especialidad = st.selectbox("Especialidad *", [SELECCIONAR] + ESPECIALIDADES)
             impacto = st.selectbox("Impacto de la falla", ["Sin Parada", "Parada Parcial", "Parada Total"])
-            estado = st.selectbox("Estado", ["Completado", "Pendiente de Repuestos", "En Curso"])
+            estado = st.selectbox("Estado *", [SELECCIONAR, "Completado", "Pendiente de Repuestos", "En Curso"])
 
         tecnicos_seleccionados = st.multiselect("Ejecutantes *", TECNICOS_LISTA,
                                                 help="Podés elegir uno o varios técnicos.",
@@ -1021,6 +1021,8 @@ with tab1:
                 faltantes.append("Especialidad")
             if tipo_trabajo == SELECCIONAR:
                 faltantes.append("Tipo de trabajo")
+            if estado == SELECCIONAR:
+                faltantes.append("Estado")
             if not evento_reportado.strip():
                 faltantes.append("Evento reportado")
             if not tecnicos_seleccionados:
