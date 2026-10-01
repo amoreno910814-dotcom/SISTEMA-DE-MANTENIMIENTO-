@@ -789,6 +789,8 @@ def texto_a_hora(texto):
 
 TIPOS_TRABAJO = ["Mejora", "Predictivo", "Preventivo", "Inspeccion", "Correctivo"]
 ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica"]
+SELECCIONAR = "— Seleccionar —"   # opción inicial: obliga al técnico a elegir de verdad
+TURNOS = ["Mañana", "Tarde", "Noche", "Rotativo"]
 
 # ------------------------------------------------------------
 #  GOOGLE SHEETS (fuente de datos persistente)
@@ -932,16 +934,27 @@ with tab1:
 
     col_f1, col_f2 = st.columns(2)
     with col_f1:
-        sector_seleccionado = st.selectbox("Sector", list(SECTORES_EQUIPOS.keys()), key="sector_dinamico")
+        sector_seleccionado = st.selectbox("Sector *", [SELECCIONAR] + list(SECTORES_EQUIPOS.keys()),
+                                           key="sector_dinamico")
     with col_f2:
-        equipos_disponibles = SECTORES_EQUIPOS.get(sector_seleccionado, ["OTRO (SIN CLASIFICAR)"])
-        equipo_seleccionado = st.selectbox("Equipo", equipos_disponibles, key="equipo_dinamico")
+        if sector_seleccionado == SELECCIONAR:
+            equipos_disponibles = [SELECCIONAR]
+        else:
+            equipos_disponibles = [SELECCIONAR] + SECTORES_EQUIPOS.get(sector_seleccionado, ["OTRO (SIN CLASIFICAR)"])
+        equipo_seleccionado = st.selectbox("Equipo *", equipos_disponibles, key="equipo_dinamico")
 
-    st.markdown(
-        f'<div class="sm-panel">Vas a registrar una tarea en <b>{sector_seleccionado}</b> — '
-        f'<b>{equipo_seleccionado}</b>. Cambiá el sector para actualizar la lista de equipos.</div>',
-        unsafe_allow_html=True
-    )
+    if sector_seleccionado == SELECCIONAR or equipo_seleccionado == SELECCIONAR:
+        st.markdown(
+            '<div class="sm-panel">Elegí primero el <b>sector</b> y después el <b>equipo</b> '
+            'donde se hizo el trabajo.</div>',
+            unsafe_allow_html=True
+        )
+    else:
+        st.markdown(
+            f'<div class="sm-panel">Vas a registrar una tarea en <b>{sector_seleccionado}</b> — '
+            f'<b>{equipo_seleccionado}</b>. Cambiá el sector para actualizar la lista de equipos.</div>',
+            unsafe_allow_html=True
+        )
 
     if "mensaje_exito" in st.session_state:
         st.success(st.session_state.mensaje_exito)
@@ -953,15 +966,15 @@ with tab1:
         col1, col2 = st.columns(2)
         with col1:
             fecha = st.date_input("Fecha del trabajo", value=ahora_ar().date())
-            turno = st.selectbox("Turno", ["Mañana", "Tarde", "Noche", "Rotativo"])
+            turno = st.selectbox("Turno *", [SELECCIONAR] + TURNOS)
             colaborador = st.selectbox("Colaborador que carga el registro", TECNICOS_LISTA)
-            tipo_trabajo = st.selectbox("Tipo de trabajo", TIPOS_TRABAJO)
+            tipo_trabajo = st.selectbox("Tipo de trabajo *", [SELECCIONAR] + TIPOS_TRABAJO)
         with col2:
-            especialidad = st.selectbox("Especialidad", ESPECIALIDADES)
+            especialidad = st.selectbox("Especialidad *", [SELECCIONAR] + ESPECIALIDADES)
             impacto = st.selectbox("Impacto de la falla", ["Sin Parada", "Parada Parcial", "Parada Total"])
-            estado = st.selectbox("Estado", ["Completado", "Pendiente de Repuestos", "En Seguimiento"])
+            estado = st.selectbox("Estado", ["Completado", "Pendiente de Repuestos", "En Curso"])
 
-        tecnicos_seleccionados = st.multiselect("Ejecutantes", TECNICOS_LISTA,
+        tecnicos_seleccionados = st.multiselect("Ejecutantes *", TECNICOS_LISTA,
                                                 help="Podés elegir uno o varios técnicos.",
                                                 **_kw_placeholder("Elegí uno o varios técnicos"))
 
@@ -982,18 +995,34 @@ with tab1:
         n_piezas = st.text_input("N° de pieza / repuesto", placeholder="Opcional")
 
         st.markdown('<div class="sm-titulo">Qué pasó</div>', unsafe_allow_html=True)
-        evento_reportado = st.text_input("Evento reportado", placeholder="Ej.: pérdida en sello de bomba")
-        descripcion = st.text_area("Descripción de la tarea", height=110,
+        evento_reportado = st.text_input("Evento reportado *", placeholder="Ej.: pérdida en sello de bomba")
+        descripcion = st.text_area("Descripción de la tarea *", height=110,
                                    placeholder="Contá qué se hizo, con qué repuestos y cómo quedó el equipo.")
         comentarios = st.text_input("Comentarios adicionales", placeholder="Opcional")
 
         submitted = st.form_submit_button("Guardar registro")
 
         if submitted:
+            faltantes = []
+            if sector_seleccionado == SELECCIONAR:
+                faltantes.append("Sector")
+            if equipo_seleccionado == SELECCIONAR:
+                faltantes.append("Equipo")
+            if turno == SELECCIONAR:
+                faltantes.append("Turno")
+            if especialidad == SELECCIONAR:
+                faltantes.append("Especialidad")
+            if tipo_trabajo == SELECCIONAR:
+                faltantes.append("Tipo de trabajo")
+            if not evento_reportado.strip():
+                faltantes.append("Evento reportado")
             if not tecnicos_seleccionados:
-                st.error("Falta elegir al menos un técnico en Ejecutantes.")
-            elif not descripcion.strip():
-                st.error("Falta la descripción de la tarea.")
+                faltantes.append("Ejecutantes")
+            if not descripcion.strip():
+                faltantes.append("Descripción de la tarea")
+
+            if faltantes:
+                st.error("Faltan completar estos campos obligatorios: " + ", ".join(faltantes) + ".")
             else:
                 df_actual = cargar_datos()
                 nuevo_id = siguiente_id(df_actual)
