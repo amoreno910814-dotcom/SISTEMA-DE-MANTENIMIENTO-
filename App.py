@@ -788,7 +788,7 @@ def texto_a_hora(texto):
 
 
 TIPOS_TRABAJO = ["Mejora", "Predictivo", "Preventivo", "Inspeccion", "Correctivo"]
-ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica"]
+ESPECIALIDADES = ["Soldadura", "Electricidad", "Instrumentacion", "Automatizacion", "Mecanica", "Obra Civil"]
 SELECCIONAR = "— Seleccionar —"   # opción inicial: obliga al técnico a elegir de verdad
 TURNOS = ["Mañana", "Tarde", "Noche", "Rotativo"]
 EQUIPO_SIN_CLASIFICAR = "OTRO (SIN CLASIFICAR)"
